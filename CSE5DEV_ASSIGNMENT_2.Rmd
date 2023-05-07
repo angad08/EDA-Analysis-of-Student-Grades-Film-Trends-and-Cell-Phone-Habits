@@ -1,0 +1,553 @@
+---
+title: "CSE5DEV_ASSIGNMENT_2"
+author: "Angad Dharmashri Kadam"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+student_df=read.csv("C:\\Users\\Angat\\Downloads\\Datasets-20220912\\Studentmarks.csv",header = TRUE)
+student_df
+```
+
+> # TASK_1 {style="color:red"}
+
+> #### **a. Calculate the age of the students and add that as a new column age1**
+
+```{r}
+#Dividing by 365 to convert the days into the years returned by the difference of dates below
+student_df$age_1<-as.integer((Sys.Date()-as.Date(student_df$dob,format = "%d/%m/%Y"))/365)
+student_df
+```
+
+> #### **b. Split the dob column into date month and year and then calculate the age based on the year column only and add that as a new column age2** {style="color:black"}
+
+```{r}
+#Splitting the Date into date,month and year
+x<-as.Date(student_df$dob,format = "%d/%m/%Y")
+student_df$date<-as.numeric(strftime(x,format="%d"))
+student_df$month<-as.numeric(strftime(x,format="%m"))
+student_df$year<-as.numeric(strftime(x,format="%Y"))
+student_df$age_2<-2022-student_df$year
+```
+
+> #### **c. Create a scatter plot for Studentname versus Marks of all three years** {style="color:black"}
+
+```{r}
+ggplot(data=student_df,aes(x=Studentname,y=X2020))+geom_point(color="red")+labs(title = "Student Marks For 2020")
+ggplot(data=student_df,aes(x=Studentname,y=X2021))+geom_point(color="blue")+labs(title = "Student Marks For 2021")
+ggplot(data=student_df,aes(x=Studentname,y=X2022))+geom_point(color="purple")+labs(title = "Student Marks For 2022")
+```
+
+> #### **d. Calculate the total marks of all students and filter the who got at least 200 marks in total and create a bar chart for students vs totalmarks in the descending order of their marks.** {style="color:black"}
+
+```{r}
+student_df$total_marks<-student_df$X2020+student_df$X2021+student_df$X2022
+top200<-student_df[student_df["total_marks"]>200,]
+ggplot(data = top200,aes(x=reorder(Studentname,-total_marks),y=total_marks))+geom_bar(stat = "identity",fill="navy",alpha=0.7)+xlab("Student Name")+ylab("Total Marks")+labs(title = "Total Marks Of Students")
+```
+
+> # TASK_2 {style="color:red"}
+
+> #### **a. Handle missing values: Remove or impute all missing values? Support the method you choose (remove or impute) with appropriate arguments. You need to show the step by step process.**
+
+```{r}
+movie_df=read.csv("C:\\Users\\Angat\\Downloads\\Datasets-20220912\\Movies.csv",header = TRUE)
+```
+
+##### ***Replacing all "" with NA*** {style="color:green"}
+
+```{r}
+#Replacing all "" with NA
+for (i in 1:ncol(movie_df)) {
+movie_df[which(movie_df[,i]==""),i]<-NA
+}
+```
+
+##### ***Checking the missing values per column*** {style="color:green"}
+
+```{r}
+#Checking the missing values per column
+(colSums(is.na(movie_df))/nrow(movie_df))*100
+```
+
+##### ***Since all the columns having missing values have less than 30% percent of missing values,so it would be appropriate to impute the missing values rather than removing them. If there were lot of missing values Like almost all rows are missing then definately we would have removed them because imputing them will create a bias in dataset.*** {style="color:green"}
+
+##### ***Printing the columns having null values*** {style="color:green"}
+
+```{r}
+#Printing the columns having null values
+n<-c()
+for (variable in names(movie_df)) {
+  if(sum(is.na(movie_df[,variable]))>1){
+    n<-append(n,variable)
+  }
+}
+print(n)
+```
+
+##### ***Now lets seperate categorical columns and numerical columns*** {style="color:green"}
+
+```{r}
+#Now lets seperate categorical columns and numerical columns
+catCols<-c()
+numCols<-c()
+for(c in 1:ncol(movie_df)){
+  if(class(movie_df[,c])=="character"){
+catCols<-append(catCols,c)
+  }
+  else{
+    numCols<-append(numCols,c)
+  }
+}
+```
+
+##### ***Lets see the difference in mean and median for all columns,if majority of the columns have large difference in mean and median differences,we will impute NAs with median. Even with low difference median can work.*** {style="color:green"}
+
+```{r}
+#Lets see the difference in mean and median for all columns,if majority of the columns have large difference in mean and median differences,we will impute NAs with median. Even with low difference median can work.
+for(i in numCols){
+print(paste("For %d",i,"The Mean and Median diff is %d",abs((mean(movie_df[,i],na.rm = TRUE)-median(movie_df[,i],na.rm = TRUE)))))
+}
+```
+
+##### ***We Observe That majority of the Columns have huge difference so I guess its better to use median to replace NAS*** {style="color:green"}
+
+##### ***Replacing Numerical columns with NA using median*** {style="color:green"}
+
+```{r}
+#We Observe That majority of the Columns have huge difference so I guess its better to use median to replace NAS
+
+#Replacing Numerical columns with NA using median
+for (variable in numCols) {
+movie_df[which(is.na(movie_df[variable])),variable]<-median(movie_df[,variable],na.rm = TRUE)
+}
+```
+
+##### ***For categorical columns we cannot use mean or median,we can only use mode.Before replacing the categorical data with mode,lets define a function to calculate a mode*** {style="color:green"}
+
+##### ***Method to calculate Mode*** {style="color:green"}
+
+```{r}
+#For categorical columns we cannot use mean or median,we can only use mode.Before replacing the categorical data with mode,lets define a function to calculate a mode
+
+#Method to calculate Mode
+Mode<-function(x) {
+ux <- unique(x)
+tab <- tabulate(match(x, ux))
+ux[tab == max(tab)]
+}
+```
+
+##### ***Replacing NAS in categorical columns using Mode*** {style="color:green"}
+
+```{r}
+#Replacing NAS in categorical columns using Mode
+for (variable in catCols) {
+movie_df[which(is.na(movie_df[variable])),variable]<-Mode(movie_df[,variable][1])
+}
+```
+
+> #### **b. Based on the Dataset, calculate "Profit" and determine the relationship between "Profit" and other variables (e.g. IMDB score). Hint: Profit = Gross - Budget. Use line plot or scatter plot to find the relationship. Present a summary of your findings.** {style="color:black"}
+
+##### ***We take relevant columns as Reviews,Duration,Director_fb_likes,Actors_likes,Total_fb_likes,Poster likes,Imbdbscore,movie likes for checking the relation with Profit.*** {style="color:green"}
+
+```{r}
+movie_df["Profit"]<-movie_df["Gross"]-movie_df["Budget"]
+# We take relevant columns as Reviews,Duration,Director_fb_likes,Actors_likes,Total_fb_likes,Poster likes,Imbdb score,movie likes for checking the relation with Profit.
+relNumCols<-c("Reviews","Duration","Director_facebook_likes","Actor_3_facebook_likes","Actor_1_facebook_likes","Cast_total_facebook_likes","Facenumber_in_poster","Actor_2_facebook_likes"   
+,"Imdb_score","Movie_facebook_likes","Profit")
+
+ggplot(data=movie_df,aes(x=Reviews,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Duration,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Director_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Actor_3_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Actor_1_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Cast_total_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Facenumber_in_poster,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Actor_2_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Imdb_score,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Movie_facebook_likes,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Aspect_ratio,y=Profit,color=Color))+geom_line()
+ggplot(data=movie_df,aes(x=Votes,y=Profit,color=Color))+geom_line()
+# From Above line graphs we observe that there is no relationship between the variables compared with Profit Column. It maybe that It depends on the choices of people and based on that the movie might be making the profit.
+```
+
+##### ***From Above line graphs we observe that there is no relationship between the variables compared with Profit Column. It maybe that It depends on the choices of people and based on that the movie might be making the profit.*** {style="color:green"}
+
+> #### **c. Calculate the correlation between the relevant variable(s) used in the Dataset. Present a summary of your findings** {style="color:black"}
+
+```{r}
+library(ggcorrplot)
+cors<-round(cor(movie_df[,relNumCols]),1)
+ggcorrplot(cors, hc.order =TRUE, type ="lower",outline.color ="red",lab = TRUE)+scale_colour_brewer(type = "seq", palette = "Spectral")
+# 1.Actor_1_likes and casted_total FB likes are correlated.
+# 2.Actor_2_likes and Actor_3_likes are correlated.
+# 3.Actor_2_likes and casted_total FB likes are correlated.
+# 4. Reviews and Movie_facebook_likes are correlated
+```
+
+-   ***Actor_1\_likes and casted_total FB likes are correlated.***
+
+-   ***Actor_2\_likes and Actor_3\_likes are correlated.***
+
+-   ***Actor_2\_likes and casted_total FB likes are correlated.***
+
+-   ***Reviews and Movie_facebook_likes are correlated***
+
+> #### **d. Based on the correlation matrix, list and plot Strong and Weak Correlations. Provide appropriate reasoning about the findings.** {style="color:black"}
+
+-   ***Actor_1\_likes and casted_total FB likes are strongly correlated, Which means that Due to the actor people are reacting more towards a movie. Since the correlation is very high,It might be that the Actor is very popular star and has great fandom that attracts people to watch a movie.***
+
+-   ***Actor_2\_likes and Actor_3\_likes are correlated, Which means that Due to some two actors people maybe intrested for a movie. Maybe its a movie where two popular actors are there and thats creating a hype for movie in audience.***
+
+-   ***Actor_2\_likes and casted_total FB likes are correlated, Which means that Due to the actor people are reacting more towards a movie. But comapred to correlation of actor 1,actor 2 has slight less correlation but its a good one and similarly there might be a actor thats making intresting to watch a movie.***
+
+-   ***Reviews and Movie_facebook_likes are strongly correlated,which means that due to the fab likes people maybe watching the movie and they maybe liking it and that might have been responsible for shooting up the reviews via fb likes.***
+
+> # **TASK_3** {style="color:red"}
+
+> #### ***a.Handle missing values: Are there any anomalies (unusual data or missing values) in the given dataset? Are you going to remove the missing values? Support your answer with appropriate arguments. You need to show the step by step process.*** {style="color:black"}
+
+```{r}
+mobile_csv=read.csv("C:\\Users\\Angat\\Downloads\\Datasets-20220912\\MobilePhoneData.csv",header = FALSE)
+mobile_csv
+```
+
+-   ***We observe that the above dataset has anomalies in the form of inverted format. i.e Columns are structured as rows and rows are included in the form of columns***
+
+-   ***We will have to transform the dataset into appropriate format.***
+
+```{r}
+# Getting the vector of column names in mobile_csv_ids variable
+mobile_csv_ids<-c(mobile_csv[,1])
+
+#To convert rows into columns and vice versa we use transpose of the datafarme
+mobile_csv<-as.data.frame(t(mobile_csv))
+
+#We select only the values of particular rows and skip the 1st row which stores the column names
+mobile_data<-mobile_csv[2:nrow(mobile_csv),]
+
+#Here we rename the columns to their actual names
+colnames(mobile_data)<-mobile_csv_ids
+
+#show the dataset
+View(mobile_data)
+```
+
+##### ***Lets check the summary of the dataset to see whether colums are in appropriate format or not*** {style="color:green"}
+
+```{r}
+summary(mobile_data)
+```
+
+-   ***From aboove we observe that columns arent in the appropritate format and hence we need to validate the data i.e convert the numerical columns into numerical ones.***
+
+-   ***We observe aboove that all the columns are branded as character.***
+
+##### ***Lets convert the numerical columns below in numeric format*** {style="color:green"}
+
+```{r}
+numCols<-c("battery_power",
+"blue",
+"clock_speed",
+"fc",
+"four_g",
+"int_memory",
+"m_dep",
+"mobile_wt",
+"n_cores",
+"pc",
+"px_height",
+"px_width",
+"ram",
+"sc_h",
+"sc_w",
+"talk_time",
+"touch_screen")
+for (variable in numCols) {
+  mobile_data[variable]<-as.numeric(mobile_data[,variable])
+}
+summary(mobile_data)
+```
+
+##### ***As we can see aboove that all the numerical columns are transformed to correct format aboove*** {style="color:green"}
+
+##### ***Lets now deal with NAs now but before lets replace any empty spaces with NA so that we can deal with all null values in a better way.*** {style="color:green"}
+
+```{r}
+#Replacing all "" with NA
+for (i in 1:ncol(mobile_data)) {
+mobile_data[which(mobile_data[,i]==""),i]<-NA
+}
+```
+
+##### *Now lets check the percentage of missing values. If any column has missing values \> 30% then we remove the column.* {style="color:green"}
+
+```{r}
+#Checking the missing values per column
+(colSums(is.na(mobile_data))/nrow(mobile_data))*100
+```
+
+##### ***From aboove we observe that ram and m_dep column have majority and more than 30% of missing values so we will drop those columns. And Other reason is mobile depth cant be 0 or any guess so better to drop and same for ram.For rest the missing value percentage isnt much so we will impute them.*** {style="color:green"}
+
+```{r}
+mobile_data<-subset(mobile_data,select=-c(m_dep,ram))
+```
+
+##### ***Now lets seperate categorical columns and numerical columns*** {style="color:green"}
+
+```{r}
+#Now lets seperate categorical columns and numerical columns
+categCols<-c()
+numerCols<-c()
+for(c in 1:ncol(mobile_data)){
+  if(class(mobile_data[,c])=="character"){
+categCols<-append(categCols,c)
+  }
+  else{
+    numerCols<-append(numerCols,c)
+  }
+}
+```
+
+##### ***Lets see the difference in mean and median for all columns,if majority of the columns have large difference in mean and median differences,we will impute NAs with median. Even with low difference median can work.*** {style="color:green"}
+
+```{r}
+#Lets see the difference in mean and median for all columns,if majority of the columns have large difference in mean and median differences,we will impute NAs with median. Even with low difference median can work.
+for(i in numerCols){
+print(paste("For %d",i,"The Mean and Median diff is %d",abs((mean(mobile_data[,i],na.rm = TRUE)-median(mobile_data[,i],na.rm = TRUE)))))
+}
+```
+
+##### ***We Observe some of the Columns have huge difference so I guess its better to use median to replace NAS*** {style="color:green"}
+
+##### ***Replacing Numerical columns with NA using median*** {style="color:green"}
+
+```{r}
+#We Observe some of the Columns have huge difference so I guess its better to use median to replace NAS
+#Replacing Numerical columns with NA using median
+for (variable in numerCols) {
+mobile_data[which(is.na(mobile_data[variable])),variable]<-median(mobile_data[,variable],na.rm = TRUE)
+}
+```
+
+##### ***For categorical columns we cannot use mean or median,we can only use mode.Before replacing the categorical data with mode,lets define a function to calculate a mode*** {style="color:green"}
+
+```{r}
+#For categorical columns we cannot use mean or median,we can only use mode.Before replacing the categorical data with mode,lets define a function to calculate a mode
+
+#Method to calculate Mode
+Mode<-function(x) {
+ux <- unique(x)
+tab <- tabulate(match(x, ux))
+ux[tab == max(tab)]
+}
+```
+
+##### ***Replacing NAS in categorical columns using Mode. We have only dual sim as categorical column having null values so we replace dual sim values with mode.*** {style="color:green"}
+
+```{r}
+#Replacing NAS in categorical columns using Mode. We have only dual sim as categorical column having null values so we replace dual sim values with mode.
+mobile_data[which(is.na(mobile_data["dual_sim"])),"dual_sim"]<-Mode(mobile_data[,"dual_sim"][1])
+```
+
+> #### ***b. Data normalisation: Do you need to normalise the data? Explain the steps with appropriate reasoning*** {style="color:black"}
+
+-   ***Yes we do need to normalise the data to bring the data in common standard format.***
+
+-   ***Like we observe battery_power,clock_speed,fc,int_memory,mobile_wt,n_cores and other numerical columns have values in different format i.e some values arein 100's while some are 2 digits while some are 4 digits.***
+
+-   ***So with normalisation we can bring all these values in standard scale which can be good for analysis.***
+
+##### ***So lets start with picking out the columns that we need to normalise. i.e we will will skip binary or columns with fixed categories and simply assign them values in 0s and 1s.*** {style="color:green"}
+
+```{r}
+#So lets start with picking out the columns that we need to normalise. i.e we will will skip binary or columns with fixed categories and simp;y assign them values in 0s and 1s.
+head(mobile_data[,numerCols])
+```
+
+##### ***From aboove we will skip blue,four_g and touch_screen columns because these are binary columns and already in the form of 0s and 1s*** {style="color:green"}
+
+##### ***So we will normalise following columns*** {style="color:green"}
+
+-   ***battery_power,***
+
+-   ***clock_speed,***
+
+-   ***fc,***
+
+-   ***int_memory,***
+
+-   ***mobile_wt,***
+
+-   ***n_cores,***
+
+-   ***px_height,***
+
+-   ***px_width,***
+
+-   ***sc_h,***
+
+-   ***sc_w,***
+
+-   ***talk_time***
+
+##### ***There are two types of normalisation methods*** {style="color:green"}
+
+-   ***Min-max***
+
+-   ***Z_score***
+
+##### ***In our case lets use Min-max*** {style="color:green"}
+
+```{r}
+#From aboove we will skip blue,four_g and touch_screen columns because these are binary columns and already in the form of 0s and 1s
+
+#So we will normalise 
+#battery_power,
+#clock_speed,
+#fc,
+#int_memory,
+#mobile_wt,
+#n_cores,
+#px_height,
+#px_width,
+#sc_h,
+#sc_w,
+#talk_time.
+
+# There are two types of normalisation methods
+#Min-max
+#Z_score
+
+#In our case lets use Min-max
+```
+
+##### ***method for Min-Max normalisation*** {style="color:green"}
+
+```{r}
+#method for Min-Max normalisation
+Min.Max<-function(x){
+  mn.mx<-(x-min(x))/(max(x)-min(x))
+  return(mn.mx)
+}
+```
+
+##### ***Before applying normalization,lets store unnormalised data as well*** {style="color:green"}
+
+```{r}
+mobile_data_n<-mobile_data
+mobile_data_n
+```
+
+##### ***Lets now apply the method to all columns below*** {style="color:green"}
+
+```{r}
+#Lets now apply the method to all columns below
+ncols<-c("battery_power","clock_speed","fc","int_memory","mobile_wt","px_height","px_width","sc_h","sc_w","talk_time")
+for (variable in ncols) {
+  mobile_data_n[variable]<-Min.Max(mobile_data_n[,variable])
+}
+head(mobile_data_n)
+```
+
+##### ***Now we can see aboove that all the values are converted into standard format using min-max scalar. We can now carry our analysis.*** {style="color:green"}
+
+> #### **c. Create histograms for all variables to visualise. Is there any outlier? Which attribute does not follow a normal distribution? Explain your answer.** {style="color:black"}
+
+##### ***Lets first see the distribution of unnormalised data and see if we find outliers and if the distribution with unnormalised variables is normal or not*** {style="color:green"}
+
+```{r}
+ggplot(mobile_data, aes(x=battery_power)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(battery_power)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data, aes(x=clock_speed)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(clock_speed)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data, aes(x=fc)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(fc)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data, aes(x=int_memory)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(int_memory)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data, aes(x=mobile_wt)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(mobile_wt)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data, aes(x=talk_time)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(talk_time)),color="blue", linetype="dashed", size=1)
+```
+
+-   **Looking at the aboove histograms we find that clock speed,fc and battery poweer columns have outliers and they dont follow a normal distribution. To be more precise clock speed and fc are skewed towards right.And thats quite inferable that different devices have different clock speed and camera pixels so there is definately going to be difference. Like high end devices have better configurations and in our data majority of devices and its information may not be of high end devices so thats why we might be getting outliers and not a normal distribution.**
+
+-   **Whereas battery power too has outliers but compared to fc and clock speed it slightly does follow normal distribution. Maybe the outlier here is because some devices have greater power but I belive the difference isnt much like 1660maH vs 1860mah there might be some devices with such range and thats why outliers are present.**
+
+-   **Internal memory,talk time and mobile weight follows a normal distribution. not precisely but definately these columsn are in good range and they dont have any outliers.**
+
+##### ***Now lets do the same comparison with normalised data*** {style="color:green"}
+
+```{r}
+#Now lets do the same comparison with normalised data
+ggplot(mobile_data_n, aes(x=battery_power)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(battery_power)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data_n, aes(x=clock_speed)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(clock_speed)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data_n, aes(x=fc)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(fc)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data_n, aes(x=int_memory)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(int_memory)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data_n, aes(x=mobile_wt)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(mobile_wt)),color="blue", linetype="dashed", size=1)
+
+
+ggplot(mobile_data_n, aes(x=talk_time)) + geom_histogram(aes(y=..density..), colour="black",bins=40, fill="white")+geom_density(alpha=.2, fill="#FF6666")+geom_vline(aes(xintercept=mean(talk_time)),color="blue", linetype="dashed", size=1)
+```
+
+-   **After looking at the normalised data we see that there isnt a much change in the scales of data but we observe that due to normalising and all values being in common scale, the distribution slightly tends to shift towads normal distribution.**
+
+-   **Like for int_memory,talktime and mobile_wt there is slight increase in the density while for columns with outliers are still same.**
+
+> #### **d. Compute the descriptive statistics (including mean, median, mode, range, quartiles) and draw a boxplot (in just one graph) of all variables. Present a summary of your findings by contrasting different features of these distributions** {style="color:black"}
+
+```{r}
+library(reshape2)
+for (variable in ncols) {
+  cat("\n\n","For", colnames(mobile_data[variable]) ,":","\n")
+  print(paste("Mean ",mean(mobile_data[,variable])))
+  print(paste("Median ",median(mobile_data[,variable])))
+  print(paste("Mode ",Mode(mobile_data[,variable])[1]))
+  print(paste("Range ",(max(mobile_data[,variable])-min(mobile_data[,variable]))))
+  print(summary(mobile_data[,variable])["1st Qu."])
+  print(summary(mobile_data[,variable])["3rd Qu."])
+  
+}
+```
+
+##### ***Boxplot for relevant variables*** {style="color:green"}
+
+```{r}
+ggplot(melt(mobile_data[,ncols]),aes(y=variable,x=value)) + geom_boxplot()
+```
+
+##### **From above we observe that** {style="color:green"}
+
+-   **Talktime 2.Sc withd**
+
+-   **Sc height**
+
+-   **mobile weight**
+
+-   **int memory**
+
+-   **fc**
+
+-   **clock_speed**
+
+##### **Have lower range compared to values of columns px_width,px_height and battery power. In this px_width and battery power are 2 colums with max range and both nearly equal ranges.** {style="color:green"}
